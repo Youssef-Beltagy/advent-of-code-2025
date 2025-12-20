@@ -3,7 +3,8 @@
 
 using namespace std;
 
-int main() {
-   d2p1();
-   d2p2();
+int main()
+{
+   d3p1();
+   d3p2();
 }
