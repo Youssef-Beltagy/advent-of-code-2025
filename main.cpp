@@ -5,6 +5,6 @@ using namespace std;
 
 int main()
 {
-   d4p1();
-   d4p2();
+   d5p1();
+   d5p2();
 }
