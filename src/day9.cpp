@@ -60,20 +60,22 @@ using namespace std;
  *
  * Matrix is 100_000 by 100_000
  * There are 500 coordinates
- * 
+ *
  * Approach 3:
  * Making the matrix is too slow.
- * Especially filling in the greens. I need to optimize this.
- * 
- * 
- * 
- * 
- * 
- * 
- * I can making a sparse matrix if I need to optimize space/time more.
+ * Especially filling in the greens.
+ * I need to optimize this.
+ * Doing it with the approrach of pencil crossing from left to right is probably good enough
+ *
+ *
+ *
+ *
+ *
+ *
+ * I can make a sparse matrix if I need to optimize space/time more.
  * I'm thinking of doing it by creating a list of ranges. That will at least compact the columns.
  * If I need even more optimization, then a list of list of ranges to compact both rows and columns.
- * 
+ *
  * ---
  * Some references: // https://stackoverflow.com/questions/69275956/efficient-algorithm-to-find-the-largest-rectangle-from-a-set-of-points
  */
@@ -149,7 +151,7 @@ struct D9Matrix
     D9Matrix(const D9Coordinate &min_coor, const D9Coordinate &max_coor, const vector<D9Coordinate> &coordinates) : min_coor(min_coor), max_coor(max_coor)
     {
 
-        matrix = vector<vector<char>>(max_coor.r - min_coor.r + 1, vector<char>(max_coor.c - min_coor.c + 1, 0));
+        matrix = vector<vector<char>>(max_coor.r - min_coor.r + 1, vector<char>(max_coor.c - min_coor.c + 1, '.'));
 
         // cout << coordinates.size() << endl; // 496
         // cout << matrix.size() << ", " << matrix.front().size() << endl; // 96428, 96754
@@ -164,67 +166,66 @@ struct D9Matrix
             D9Coordinate cur = coordinates[i];
             cur = {cur.r - min_coor.r, cur.c - min_coor.c};
 
-            for (size_t r = min(prev.r, cur.r), R = max(prev.r, cur.r); r <= R; r++)
-                for (size_t c = min(prev.c, cur.c), C = max(prev.c, cur.c); c <= C; c++)
+            size_t r = min(prev.r, cur.r), R = max(prev.r, cur.r);
+            size_t c = min(prev.c, cur.c), C = max(prev.c, cur.c);
+            if (r != R)
+            { // Same column different rows
+                for (; r <= R; r++)
                 {
-                    matrix[r][c] = 'X'; // I don't think I need to bother with #/X here. X is good enough.
+                    matrix[r][c] = 'X';
                 }
+            }
+            else
+            { // Same row different columns
+
+                // Avoid spamming X when filling columns because Xs are used to later fill in the greens
+                matrix[r][c] = 'X';
+                c++;
+                for (; c <= C; c++)
+                {
+                    matrix[r][c] = 'G';
+                }
+            }
         }
+
+        // print();
 
         cout << "Filling in all the greens" << endl;
 
-        // Find all bad tiles starting with the edges
-        list<D9Coordinate> bad_tiles;
-        for (size_t c = 0, C = matrix.front().size(); c < C; c++)
-        {
-            mark_to_visit({0, c}, bad_tiles);
-            mark_to_visit({matrix.size() - 1, c}, bad_tiles);
-        }
-
         for (size_t r = 0, R = matrix.size(); r < R; r++)
         {
-            mark_to_visit({r, 0}, bad_tiles);
-            mark_to_visit({r, matrix.front().size() - 1}, bad_tiles);
-        }
 
-        while (!bad_tiles.empty())
-        {
-            D9Coordinate bad_tile = bad_tiles.front();
-            bad_tiles.pop_front();
-
-            // Mark as bad
-            matrix[bad_tile.r][bad_tile.c] = '.';
-            vector<pair<int64_t, int64_t>> DIRECTIONS = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
-
-            for (const pair<int64_t, int64_t> &dir : DIRECTIONS)
+            /*
+             * Since this is a closed loop, if you trace a line from one side of the matrix to the other,
+             * You will notice that "inside" parts of the line cross an odd number of edges.
+             * "Outside" parts of the line cross an even number of edges.
+             */
+            char prev = '.';
+            for (size_t c = 0, C = matrix.front().size(); c < C; c++)
             {
-                mark_to_visit({bad_tile.r + dir.first, bad_tile.c + dir.second}, bad_tiles);
-            }
-        }
 
-        for (size_t c = 0, C = matrix.front().size(); c < C; c++)
-        {
-            // The remaining 0s are inside the circle
-            for (size_t r = 0, R = matrix.size(); r < R; r++)
-            {
-                if (matrix[r][c] == 0)
+                if (prev == '.' && matrix[r][c] == 'X')
+                { // Crossing an edge. start coloring in green.
+                    prev = 'X';
+                }
+                else if (prev == 'X' && matrix[r][c] == '.')
+                { // Color in green
                     matrix[r][c] = 'X';
+                }
+                else if (prev == 'X' && matrix[r][c] == 'X')
+                { // Crossing an edge.  Stop coloring in green.
+                    prev = '.';
+                } // Remaining case: prev == '.' && matrix[r][c] == '.' --> just don't color in green
+
+                if (matrix[r][c] == 'G')
+                {
+                    // Now undo the edge condition added before.
+                    matrix[r][c] = 'X';
+                }
             }
         }
-    }
 
-    void inline mark_to_visit(const D9Coordinate &cur_pos, list<D9Coordinate> &bad_tiles)
-    {
-
-        // Skip if
-        if (cur_pos.r < 0 || cur_pos.r >= matrix.size()            // Bad row index
-            || cur_pos.c < 0 || cur_pos.c >= matrix.front().size() // Bad col index
-            || matrix[cur_pos.r][cur_pos.c] != 0)                  // It is unvisited
-            return;
-
-        // Mark at as to-visit
-        matrix[cur_pos.r][cur_pos.c] = 1;
-        bad_tiles.push_back(cur_pos);
+        // print();
     }
 
     void print()
@@ -302,4 +303,3 @@ void d9p2()
 
     cout << "Part 2: " << rect.area << endl;
 }
-
